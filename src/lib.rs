@@ -116,17 +116,20 @@ pub fn translate(
     let client = Client::new();
     let res = client.post(&url).headers(headers).json(&payload).send()?;
 
+    // 提取状态和文本
+    let status = res.status();
+    let text = res.text()?;
+
     // 解析响应
-    if res.status().is_success() {
-        let result: Value = res.json()?;
+    if status.is_success() {
+        let result: Value = serde_json::from_str(&text)?;
         if let Some(translated_text) = result.get("result").and_then(Value::as_str) {
             return Ok(translated_text.to_string());
         } else {
             return Err("Failed to extract translated text from response".into());
         }
     } else {
-        let error_msg = res.text()?;
-        return Err(format!("Error {}: {}", res.status(), error_msg).into());
+        return Err(format!("Error {}: {}", status, text).into());
     }
 }
 
