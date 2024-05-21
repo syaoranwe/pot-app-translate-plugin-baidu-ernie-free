@@ -60,12 +60,15 @@ pub fn translate(
     let model_string = needs.get("model_string").ok_or("缺少必要参数: model_string")?;
 
     // 提取可选参数，若不存在则使用默认值
-    let system_prompt = needs.get("system_prompt").unwrap_or(&default_system_prompt());
-    let prompts = needs.get("prompts").unwrap_or(&default_prompts());
+    let system_prompt_binding = default_system_prompt();
+    let system_prompt = needs.get("system_prompt").unwrap_or(&system_prompt_binding);
+    let prompts_binding = default_prompts();
+    let prompts = needs.get("prompts").unwrap_or(&prompts_binding);
     let temperature = needs.get("temperature").unwrap_or(&default_temperature()).parse::<f64>()?;
     let top_p = needs.get("top_p").unwrap_or(&default_top_p()).parse::<f64>()?;
     let penalty_score = needs.get("penalty_score").unwrap_or(&default_penalty_score()).parse::<f64>()?;
-    let request_url = needs.get("request_url").unwrap_or(&default_request_url());
+    let request_url_binding = default_request_url();
+    let request_url = needs.get("request_url").unwrap_or(&request_url_binding);
 
     // 检查参数范围
     if temperature <= 0.0 || temperature > 1.0 {
