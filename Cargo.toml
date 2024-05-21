@@ -2,7 +2,7 @@
 name = "plugin" # 名称固定为plugin，请勿更改
 version = "1.0.0"
 authors = ["syaoranwe"]
-edition = "2024"
+edition = "2021"
 
 [lib]
 crate-type = ["dylib"] # pot只支持dylib类型动态库，请勿修改
