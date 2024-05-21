@@ -84,11 +84,14 @@ pub fn translate(
     // 构建请求的payload
     let mut prompts_list: Vec<Value> = serde_json::from_str(prompts)?;
     for prompt in &mut prompts_list {
-        if let Some(content) = prompt.get_mut("content").and_then(Value::as_str_mut) {
-            *content = content.replace("$to$", to).replace("$src_text$", text);
+        if let Some(content) = prompt.get_mut("content") {
+            if let Some(content_str) = content.as_str() {
+                let updated_content = content_str.replace("$to$", to).replace("$src_text$", text);
+                *content = Value::String(updated_content);
+            }
         }
     }
-    
+
     let payload = json!({
         "messages": prompts_list,
         "stream": false,
