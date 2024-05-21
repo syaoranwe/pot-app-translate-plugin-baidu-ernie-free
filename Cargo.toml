@@ -1,8 +1,8 @@
 [package]
 name = "plugin" # 名称固定为plugin，请勿更改
 version = "1.0.0"
-authors = ["pot-app"]
-edition = "2021"
+authors = ["syaoranwe"]
+edition = "2024"
 
 [lib]
 crate-type = ["dylib"] # pot只支持dylib类型动态库，请勿修改
