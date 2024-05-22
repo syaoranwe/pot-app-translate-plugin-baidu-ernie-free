@@ -1,104 +1,40 @@
-# Pot-App 翻译插件模板仓库 (以 [Lingva](https://github.com/TheDavidDelta/lingva-translate) 为例)
+# Pot-App 百度文心ERNIE免费模型 翻译插件
 
-### [English](./README_EN.md) | 简体中文
+## 介绍
+1. 使用百度云文心系列模型中的免费模型进行翻译：ernie_speed/ernie-speed-128k/ernie-lite-8k
+2. ernie_speed和ernie-lite-8k个人免费版限速：每分钟最多300次请求，每分钟最多使用词元数：300K；ernie-speed-128k个人免费版限速：每分钟最多60次请求，每分钟最多使用词元数：300K. 不保障SLA，这个限制速度是足够个人使用的。
+3. 你可以自定义几乎所有的配置项，包括系统人设、提示词、采样温度、Top-P、惩罚因子等。
+4. 由于Pot的插件不支持打印机流式效果，所以只支持获取到所有翻译内容后再一并显示。
 
-### 此仓库为模板仓库，编写插件时可以直接由此仓库创建插件仓库
+## 配置参数
 
-## 插件编写指南
+### 获取API Key和Secret Key
 
-### 1. 插件仓库创建
+1. 注册百度智能云
+2. 实名认证
+3. 进入千帆大模型平台，在模型服务里应用接入页面创建应用
+4. 随便编辑应用名和描述，服务保持默认选择所有预置应用即可
+5. 保存后回到应用列表里，即可复制对应应用API Key和Secret Key，见下图
+6. 开通免费模型的后付费服务
 
-- 以此仓库为模板创建一个新的仓库
-- 仓库名为 `pot-app-translate-plugin-<插件名>`，例如 `pot-app-translate-plugin-lingva`
+![获取应用Key](img\获取应用key.jpg)
 
-### 2. 插件信息配置
+### 必填配置项
+1. API Key: 上面获取到的
+2. Secret Key：上面获取到的
+3. 选用模型：ernie_speed/ernie-speed-128k/ernie-lite-8k，推荐ernie-lite-8k，翻译质量好一些
 
-编辑 `info.json` 文件，修改以下字段：
+### 可选配置项
+1. System人设：系统人设提示词字符串, 留空时默认为`You are a professional translation engine.`
+2. 翻译提示词：用户自定义提示词列表, 由一行json字符串表示, 列表中元素值中的role有两种：user: 表示用户；assistant: 表示对话助手, content表示内容。content中的`$to$`会自动替换为译文语言描述, 例如`Traditional Chinese(繁體中文)`, `$src_text$`会自动被替换为原文文本。 如果留空则使用默认提示词（你可以在 json.cn 上编辑该提示词，之后压缩为一行即可导入程序）：
 
-- `id`：插件唯一 id，必须以`[plugin]`开头，例如 `[plugin].com.pot-app.lingva`
-- `homepage`: 插件主页，填写你的仓库地址即可，例如 `https://github.com/pot-app/pot-app-translate-plugin-template`
-- `display`: 插件显示名称，例如 `Lingva`
-- `icon`: 插件图标，例如 `lingva.svg`
-- `needs`: 插件依赖，一个数组，每个依赖为一个对象，包含以下字段：
-  - `key`: 依赖 key，对应该项依赖在配置文件中的名称，例如 `requestPath`
-  - `display`: 依赖显示名称，对应用户显示的名称，例如 `请求地址`
-  - `type`: 组件类型 `input` | `select`
-  - `options`: 选项列表(仅select组件需要)，例如 `{"engine_a":"Engina A","engine_b":"Engina B"}`
-- `language`: 插件支持的语言映射，将 pot 的语言代码和插件发送请求时的语言代码一一对应
+    >[{"role":"user","content":"You are a professional translation engine, skilled in translating text into accurate, professional, fluent, and natural translations, avoiding mechanical literal translations like machine translation. You only translate the text without interpreting it. You only respond with the translated text and do not include any additional content."},{"role":"assistant","content":"OK, I will only translate the text content you provided, never interpret it."},{"role":"user","content":"Translate the text delimited by ``` below to Simplified Chinese(简体中文), only return translation:\n```\nHello, world!\n```\n"},{"role":"assistant","content":"你好，世界！"},{"role":"user","content":"Translate the text delimited by ``` below to English, only return translation:\n```\n再见，小明\n```\n"},{"role":"assistant","content":"Bye, Xiaoming."},{"role":"user","content":"Translate the text delimited by ``` below to $to$, only return translation:\n```\n$src_text$\n```\n"}]
+3. temperature：留空时默认0.6, 范围 (0, 1.0], 不能为0, 值越小, 生成的内容越固定
+4. top_p：留空时默认为0.9, 取值范围：[0.0, 1.0], 值越大, 生成的内容多样性越丰富
+5. penalty_score：留空时默认为1.0, 取值范围：[1.0, 2.0], 值越大, 生成的内容重复性的内容越少
+6. 自定义请求地址：留空时默认为`https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/`，实际请求地址为自定义请求地址+选用模型名
 
-### 3. 插件编写/编译
+## 插件不足
 
-编辑 `src/lib.rs` 实现 `translate` 函数
+当前鉴权机制是每次请求均请求一次access_token，access_token有效期是一个月，所以新请求没必要再次刷新access_token。但是因为不知道pot插件里应该怎么弄access_token的缓存，个人也不懂Rust，所以没有缓存access_token。代码都是大模型写的。有知道的朋友欢迎提出建议或PR。
 
-#### 输入参数
-
-```rust
-    text: &str, // 待翻译文本
-    from: &str, // 源语言代码
-    to: &str,   // 目标语言代码
-    detect: &str, // 检测到的语言代码(未转换)
-    needs: HashMap<String, String>, // 插件需要的其他配置信息,由info.json定义
-```
-
-#### 返回值
-
-```rust
-// 文本翻译
-// 返回用Value包裹的String
-  return Ok(Value::String(result));
-// 词典
-// 返回指定格式的json
-  return Ok(json!(result));
-```
-
-词典返回 json 示例：
-
-```json
-{
-  "pronunciations": [
-    {
-      "region": "", // 地区
-      "symbol": "", // 音标
-      "voice": [u8] // 语音字节数组
-    }
-  ],
-  "explanations": [
-    {
-      "trait": "", // 词性
-      "explains": [""] // 释义
-    }
-  ],
-  "associations": [""], // 联想/变形
-  "sentence": [
-    {
-      "source": "", // 原文
-      "target": "" // 译文
-    }
-  ]
-}
-```
-
-#### 测试/编译
-
-```bash
-cargo test --package plugin --lib -- tests --nocapture # 运行测试用例
-cargo build --release # 编译
-```
-
-### 4. 打包 pot 插件
-
-1. 在`target/release`目录找到`plugin.dll`(Windows)/`libplugin.dylib`(MacOS)/`libplugin.so`(Linux)文件，统一删除`lib`前缀.
-
-2. 将`plugin.dll`/`libplugin.dylib`/`libplugin.so`文件和`info.json`以及图标文件压缩为 zip 文件。
-
-3. 将文件重命名为`<插件id>.potext`，例如`[plugin].com.pot-app.lingva.potext`,即可得到 pot 需要的插件。
-
-## 自动编译打包
-
-本仓库配置了 Github Actions，可以实现推送后自动编译打包插件。
-
-每次将仓库推送到 GitHub 之后 actions 会自动运行，将打包好的插件上传到 artifact，在 actions 页面可以下载
-
-每次提交 Tag 之后，actions 会自动运行，将打包好的插件上传到 release，在 release 页面可以下载打包好的插件
-
-> 注意需要在仓库设置中添加一个名为`TOKEN`的 secret，值为一个有权限的 GitHub Token，用于上传 release
