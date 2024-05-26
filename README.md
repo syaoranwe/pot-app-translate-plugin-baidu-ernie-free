@@ -22,7 +22,7 @@
 ### 必填配置项
 1. API Key: 上面获取到的
 2. Secret Key：上面获取到的
-3. 选用模型：ernie_speed/ernie-speed-128k/ernie-lite-8k，推荐ernie-lite-8k，翻译质量好一些
+3. 选用模型：ernie_speed/ernie-speed-128k/ernie-lite-8k/ernie-tiny-8k，推荐ernie-lite-8k
 
 ### 可选配置项
 1. System人设：系统人设提示词字符串, 留空时默认为`You are a professional translation engine.`
@@ -34,8 +34,4 @@
 4. top_p：留空时默认为0.9, 取值范围：[0.0, 1.0], 值越大, 生成的内容多样性越丰富
 5. penalty_score：留空时默认为1.0, 取值范围：[1.0, 2.0], 值越大, 生成的内容重复性的内容越少
 6. 自定义请求地址：留空时默认为`https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/`，实际请求地址为自定义请求地址+选用模型名
-
-## 插件不足
-
-当前鉴权机制是每次请求均请求一次access_token，access_token有效期是一个月，所以新请求没必要再次刷新access_token。但是因为不知道pot插件里应该怎么弄access_token的缓存，个人也不懂Rust，所以没有缓存access_token。代码都是大模型写的。有知道的朋友欢迎提出建议或PR。
 

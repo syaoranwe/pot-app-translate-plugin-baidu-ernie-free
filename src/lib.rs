@@ -1,7 +1,11 @@
+use dirs::config_dir;
 use reqwest::header;
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::error::Error;
+use std::fs::{File, read_to_string};
+use std::io::Write;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 // 默认的系统提示词
 const DEFAULT_SYSTEM_PROMPT: &str = "You are a professional translation engine.";
@@ -16,8 +20,8 @@ const DEFAULT_PENALTY_SCORE: &str = "1.0";
 // 默认的请求URL
 const DEFAULT_REQUEST_URL: &str = "https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/";
 
-// 获取访问令牌
-fn get_access_token(api_key: &str, secret_key: &str) -> Result<String, Box<dyn Error>> {
+// 调用接口获取最新的访问令牌
+fn get_new_access_token(api_key: &str, secret_key: &str) -> Result<String, Box<dyn Error>> {
     let url = format!("https://aip.baidubce.com/oauth/2.0/token?grant_type=client_credentials&client_id={}&client_secret={}", api_key, secret_key);
     let client = reqwest::blocking::Client::new();
     let response = client.post(&url).send()?;
@@ -25,6 +29,67 @@ fn get_access_token(api_key: &str, secret_key: &str) -> Result<String, Box<dyn E
     match result.get("access_token") {
         Some(token) => Ok(token.as_str().unwrap().to_string()),
         None => Err("Access token not found in response".into()),
+    }
+}
+
+// 读取本地缓存的访问令牌或者调用接口获取最新的访问令牌
+fn get_access_token(api_key: &str, secret_key: &str) -> Result<String, Box<dyn Error>> {
+    // 首先拼接缓存令牌的 JSON 文件路径 config_dir() + com.pot-app.desktop/plugins/translate/[plugin].com.pot-app.baidu-ernie-free/access_token.json
+    let config_dir_path = config_dir().unwrap();
+    let access_token_cache_path = config_dir_path
+        .join("com.pot-app.desktop")
+        .join("plugins")
+        .join("translate")
+        .join("[plugin].com.pot-app.baidu-ernie-free")
+        .join("access_token.json");
+    // 尝试读取文件
+    match read_to_string(&access_token_cache_path) {
+        Ok(content) => {
+            // 如果文件存在，解析 JSON 内容
+            // println!("发现缓存的访问令牌，尝试读取...");  // 调试用
+            let json_value: Value = serde_json::from_str(&content)?;
+            let access_token = json_value["access_token"].as_str().unwrap().to_string();
+            let timestamp = json_value["timestamp"].as_u64().unwrap();
+            // 获取当前系统时间戳
+            let current_timestamp = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
+            // 检查文件中的时间戳是否过期（过期条件为：当前系统时间戳 - timestamp > 604800，即 7 天）
+            if current_timestamp - timestamp > 604800 {
+                // println!("访问令牌已过期，尝试获取新的访问令牌...");  // 调试用
+                // 如果过期，调用接口获取最新的访问令牌
+                let new_access_token = get_new_access_token(api_key, secret_key)?;
+                // 创建新的 JSON 对象
+                let new_json_value = json!({
+                    "access_token": new_access_token,
+                    "timestamp": current_timestamp
+                });
+                // 将新的访问令牌和当前系统时间戳写入文件进行更新
+                let mut file = File::create(&access_token_cache_path)?;
+                file.write_all(new_json_value.to_string().as_bytes())?;
+                // 返回新的访问令牌
+                Ok(new_access_token)
+            } else {
+                // println!("访问令牌未过期，直接返回...");  // 调试用
+                // 如果未过期，直接返回文件中的访问令牌
+                Ok(access_token)
+            }
+        }
+        Err(_) => {
+            // println!("未发现缓存的访问令牌，可能是第一次安装使用，尝试获取新的访问令牌...");  // 调试用
+            // 如果文件不存在，说明是插件安装后第一次调用，需要调用接口获取最新的访问令牌
+            let new_access_token = get_new_access_token(api_key, secret_key)?;
+            // 获取当前系统时间戳
+            let current_timestamp = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
+            // 创建新的 JSON 对象
+            let new_json_value = json!({
+                "access_token": new_access_token,
+                "timestamp": current_timestamp
+            });
+            // 将访问令牌和当前系统时间戳写入文件
+            let mut file = File::create(&access_token_cache_path)?;
+            file.write_all(new_json_value.to_string().as_bytes())?;
+            // 返回访问令牌
+            Ok(new_access_token)
+        }
     }
 }
 
